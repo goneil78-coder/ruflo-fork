@@ -1134,8 +1134,10 @@ npx ruflo metaharness audit-trend \              # diff two audits (drift)
 npx ruflo metaharness similarity \               # iter 36 — ADR-152 §3.1 weighted similarity
   --a a.json --b b.json [--per-dimension] [--alert-below 0.5]
 npx ruflo metaharness drift-from-history \       # iter 53 — 1-command drift (composes 3 primitives)
-  [--baseline-since 7d] [--baseline-key <key>] [--threshold 0.95] [--dry-run]
-                                                 # iter 66 — --baseline-key skips audit-list (~43x faster)
+  [--baseline-since 7d] [--baseline-key <key>] [--baseline-file <path>] \
+  [--threshold 0.95] [--dry-run]
+                                                 # iter 66 — --baseline-key skips audit-list (~14x faster)
+                                                 # iter 67 — --baseline-file skips memory entirely (~19x faster)
 npx ruflo metaharness mint --name foo --template vertical:coding --confirm
 
 # Dedicated command

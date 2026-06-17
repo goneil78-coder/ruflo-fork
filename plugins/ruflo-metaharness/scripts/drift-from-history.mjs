@@ -46,17 +46,20 @@ const CLI_PKG = process.env.CLI_CORE === '1'
 
 const ARGS = (() => {
   const a = {
-    path: '.', baselineSince: null, baselineKey: null, threshold: 0.95,
-    dryRun: false, format: 'table',
+    path: '.', baselineSince: null, baselineKey: null, baselineFile: null,
+    threshold: 0.95, dryRun: false, format: 'table',
   };
   for (let i = 2; i < process.argv.length; i++) {
     const v = process.argv[i];
     if (v === '--path') a.path = process.argv[++i];
     else if (v === '--baseline-since') a.baselineSince = process.argv[++i];
     // iter 66 — explicit baseline-key skips the ONNX-heavy audit-list
-    // call entirely. Cron jobs that know the key (e.g., via prior
-    // audit-list invocation) avoid the ~25s warmup each tick.
+    // call entirely. Cron jobs that know the key avoid the ~25s warmup.
     else if (v === '--baseline-key') a.baselineKey = process.argv[++i];
+    // iter 67 — baseline-file goes further: no memory call at all.
+    // Useful for CI workflows that store last-run audit as an artifact
+    // and download it for diff against fresh audit.
+    else if (v === '--baseline-file') a.baselineFile = process.argv[++i];
     else if (v === '--threshold') a.threshold = Number(process.argv[++i]);
     else if (v === '--dry-run') a.dryRun = true;
     else if (v === '--format') a.format = process.argv[++i];
@@ -151,7 +154,19 @@ async function main() {
   let listResult;
   let auditResult;
   let skippedAuditList = false;
-  if (ARGS.baselineKey) {
+  let usedBaselineFile = false;
+  if (ARGS.baselineFile) {
+    // iter 67 fast-fast path — baseline already on disk. Skip
+    // audit-list AND skip memory roundtrip when running audit-trend.
+    skippedAuditList = true;
+    usedBaselineFile = true;
+    listResult = {
+      json: { records: [{ key: `file:${ARGS.baselineFile}`, startedAt: null }] },
+      exitCode: 0, stdout: '', stderr: '', durationMs: 0,
+    };
+    auditResult = await runScriptJsonAsync('oia-audit.mjs', auditArgs);
+    auditResult.durationMs = Date.now() - auditStart;
+  } else if (ARGS.baselineKey) {
     skippedAuditList = true;
     // Synthesize a list result containing the user-provided key.
     // No memory call needed — drift-from-history's downstream code
@@ -233,11 +248,20 @@ async function main() {
     writeFileSync(currPath, JSON.stringify(auditResult.json));
 
     // Step 3: audit-trend
-    const trendArgs = [
-      '--baseline-key', baseline.key,
-      '--current', currPath,
-      '--alert-on-distance-below', String(ARGS.threshold),
-    ];
+    // iter 67 — when --baseline-file was given, pass it through as
+    // audit-trend's --baseline file input instead of --baseline-key.
+    // Avoids the memory roundtrip on the trend leg too.
+    const trendArgs = usedBaselineFile
+      ? [
+          '--baseline', ARGS.baselineFile,
+          '--current', currPath,
+          '--alert-on-distance-below', String(ARGS.threshold),
+        ]
+      : [
+          '--baseline-key', baseline.key,
+          '--current', currPath,
+          '--alert-on-distance-below', String(ARGS.threshold),
+        ];
     const trendResult = runScriptJson('audit-trend.mjs', trendArgs);
     if (!trendResult.json) {
       emitAndExit({
@@ -262,6 +286,9 @@ async function main() {
         // iter 66 — when true, audit-list was skipped via --baseline-key.
         // Fastpath drops wall-clock from ~26s to ~1s (avoids ONNX warmup).
         skippedAuditList,
+        // iter 67 — when true, baseline came from a file instead of memory.
+        // Skips audit-list AND the audit-trend memory roundtrip.
+        usedBaselineFile,
       },
       baseline: {
         key: baseline.key,

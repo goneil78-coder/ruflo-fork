@@ -191,6 +191,22 @@ grep -q "execCli(\[\s*'-y'\s*,\s*'metaharness@latest'" "$F" 2>/dev/null || \
 grep -q "cwd: opts" "$F" || miss="$miss no-cwd-passthrough"
 [[ -z "$miss" ]] && ok || bad "$miss"
 
+step "17z30. drift-from-history --baseline-file fastest-path (iter 67)"
+miss=""
+F="$ROOT/scripts/drift-from-history.mjs"
+grep -q -- "--baseline-file" "$F" 2>/dev/null || miss="$miss no-flag"
+grep -q "baselineFile: null" "$F" 2>/dev/null || miss="$miss no-default"
+grep -q "usedBaselineFile" "$F" 2>/dev/null || miss="$miss no-used-flag"
+grep -q "ARGS.baselineFile" "$F" 2>/dev/null || miss="$miss no-arg-read"
+# Synthetic listResult uses file: prefix to distinguish from real keys
+grep -q "file:\${ARGS.baselineFile}" "$F" 2>/dev/null || miss="$miss no-file-prefix"
+# audit-trend uses --baseline (file) not --baseline-key in fast-fast-path
+grep -q "'--baseline', ARGS.baselineFile" "$F" 2>/dev/null || miss="$miss no-baseline-file-passthrough"
+# CLAUDE.md mentions it
+CMD="$ROOT/../../CLAUDE.md"
+grep -q -- "--baseline-file <path>" "$CMD" 2>/dev/null || miss="$miss claude-md-no-flag"
+[[ -z "$miss" ]] && ok || bad "$miss"
+
 step "17z29. drift-from-history --baseline-key fast-path skips audit-list (iter 66)"
 miss=""
 F="$ROOT/scripts/drift-from-history.mjs"
@@ -333,7 +349,8 @@ grep -q "Promise.all" "$F" 2>/dev/null || miss="$miss no-promise-all"
 # Reuses auditResult from parallel batch (no second oia-audit call beyond the
 # iter-66 if/else fast-path/slow-path which are mutually exclusive at runtime).
 COUNT=$(grep -c "runScriptJson\(Async\)\?('oia-audit.mjs'" "$F" 2>/dev/null; true)
-[[ "$COUNT" -le 2 ]] || miss="$miss duplicate-oia-audit-calls:$COUNT"
+# 3 acceptable: iter-67 baseline-file path + iter-66 baseline-key path + iter-58 default
+[[ "$COUNT" -le 3 ]] || miss="$miss duplicate-oia-audit-calls:$COUNT"
 # Comment marker
 grep -q "iter 58 — reuse auditResult from the parallel batch" "$F" 2>/dev/null || miss="$miss no-reuse-comment"
 [[ -z "$miss" ]] && ok || bad "$miss"
