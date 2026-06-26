@@ -49,7 +49,7 @@ const BASELINES_BY_DATASET = {
 const DATASET_RRF_WEIGHTS = {
   arguana: { dense: 1.5, bm25: 1.0 },  // symmetric retrieval favors dense; boost it over weak BM25
   nfcorpus: { dense: 1.0, bm25: 0.0 }, // iter 14: pure dense fusion (0.2→0.0) RRF with single system + minMax norm preserved
-  scifact: { dense: 1.0, bm25: 0.2 },  // iter 19: test nfcorpus winner recipe (0.4→0.2 downweight BM25)
+  scifact: { dense: 1.0, bm25: 0.0 },  // iter 20: test nfcorpus winner recipe on scifact (0.2→0.0 pure dense)
 };
 function detectDataset(path) {
   const p = path.toLowerCase();
