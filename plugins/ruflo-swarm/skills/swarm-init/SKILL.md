@@ -1,6 +1,6 @@
 ---
 name: swarm-init
-description: Initialize a multi-agent swarm with anti-drift configuration
+description: Initialize a multi-agent swarm with anti-drift configuration. Use when starting a complex multi-file task that needs 3+ coordinated agents (feature implementation, refactor across modules, security audit). Skip for single-file edits or quick questions.
 argument-hint: "[--topology hierarchical|mesh|ring]"
 allowed-tools: Bash(npx *) mcp__claude-flow__swarm_init mcp__claude-flow__swarm_status Agent
 ---
