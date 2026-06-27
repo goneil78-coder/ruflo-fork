@@ -4,7 +4,7 @@ Retrieval-Augmented Generation memory with HNSW vector search, AgentDB persisten
 
 ## Overview
 
-Provides semantic store/search/recall over AgentDB with HNSW-indexed vector search (150x-12,500x faster than brute force). Bridges Claude Code's native auto-memory into AgentDB with 384-dim ONNX embeddings for unified cross-session semantic retrieval.
+Provides semantic store/search/recall over AgentDB with HNSW-indexed vector search (measured ~1.9x at N=20k, ~3.2x–4.7x at N=5k vs brute force, recall@10 ~0.99; ANN wins above the index-size crossover). Bridges Claude Code's native auto-memory into AgentDB with 384-dim ONNX embeddings for unified cross-session semantic retrieval.
 
 ## Quick Start
 
