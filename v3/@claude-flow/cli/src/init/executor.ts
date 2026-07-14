@@ -241,14 +241,37 @@ export async function executeInit(options: InitOptions): Promise<InitResult> {
       // the `vector_indexes` table (older CLI / agentdb-written), self-heal it
       // so the statusline vector count + namespace routing work. Best-effort,
       // dynamically imported so a WASM-only host without better-sqlite3 just
-      // skips it. Fresh projects have no DB yet — this is a no-op there.
+      // skips it.
+      //
+      // Persistent memory ON BY DEFAULT: `runtime.memoryBackend` already
+      // defaults to 'hybrid' in DEFAULT_INIT_OPTIONS, but that only ever
+      // configured the DECLARED backend — the actual .swarm/memory.db file
+      // was never created until something eventually called `memory store`
+      // or the user ran `memory init --force` by hand (both the generated
+      // CLAUDE.md and the quickstart docs told users to do this as a
+      // separate step). A fresh project could sit for days looking
+      // "configured for AgentDB" while genuinely capturing nothing, with no
+      // signal that the config and the on-disk reality had diverged. Fresh
+      // projects now get the DB eagerly created here, matching what
+      // `memoryBackend` already promised; MINIMAL_INIT_OPTIONS
+      // (memoryBackend: 'memory') opts out, matching its non-persistent intent.
       try {
         const memDbPath = path.join(targetDir, '.swarm', 'memory.db');
         if (fs.existsSync(memDbPath)) {
           const { repairVectorIndexes } = await import('../memory/memory-initializer.js');
           await repairVectorIndexes(memDbPath, { autoRecover: true });
+        } else if (options.runtime.memoryBackend !== 'memory') {
+          const { initializeMemoryDatabase } = await import('../memory/memory-initializer.js');
+          const initResult = await initializeMemoryDatabase({
+            backend: options.runtime.memoryBackend,
+            dbPath: memDbPath,
+            verbose: false,
+          });
+          if (initResult.success) {
+            result.created.files.push('.swarm/memory.db');
+          }
         }
-      } catch { /* best-effort — never block init on memory repair */ }
+      } catch { /* best-effort — never block init on memory setup */ }
     }
 
     // Generate statusline

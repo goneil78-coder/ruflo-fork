@@ -547,7 +547,9 @@ const initAction = async (ctx: CommandContext): Promise<CommandResult> => {
       output.writeln(output.bold('Next steps:'));
       output.printList([
         `Run ${output.highlight(`${bin} daemon start`)} to start background workers`,
-        `Run ${output.highlight(`${bin} memory init`)} to initialize memory database`,
+        // Memory is initialized automatically during init (persistent by
+        // default — see executor.ts) — no separate `memory init` step needed
+        // unless the DB was skipped (MINIMAL_INIT_OPTIONS) or needs --force.
         `Run ${output.highlight(`${bin} swarm init`)} to initialize a swarm`,
         `Or use ${output.highlight(`${bin} init --start-all`)} to do all of the above`,
         options.components.settings ? `Review ${output.highlight('.claude/settings.json')} for hook configurations` : '',
